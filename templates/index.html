@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+    }
+    h1 {
+      color: #333;
+    }
+    .option-block {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 1em;
+    }
+    .results {
+      margin-top: 1em;
+    }
+    .result {
+      border: 1px solid #ddd;
+      margin-bottom: 10px;
+      padding: 10px;
+    }
+    .weather {
+      margin-left: 20px;
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Weather App </h1>
+  <p>Please select an option and enter the necessary details below:</p>
+
+  <!-- Weather Form -->
+  <form method="POST" action="/">
+    <!-- Option 1: City, State, Country -->
+    <div class="option-block">
+      <input type="radio" name="option" id="option1" value="option1">
+      <label for="option1"><strong>Option 1:</strong> City, State, Country</label>
+      <div>
+        <label for="city">City:</label><br>
+        <input type="text" id="city" name="city" placeholder="e.g. Los Angeles" style="width: 300px;"><br><br>
+        <label for="state">State:</label><br>
+        <input type="text" id="state" name="state" placeholder="e.g. CA" style="width: 300px;"><br><br>
+        <label for="country">Country:</label><br>
+        <input type="text" id="country" name="country" placeholder="e.g. US" style="width: 300px;">
+      </div>
+    </div>
+
+    <!-- Option 2: ZIP Code, Country -->
+    <div class="option-block">
+      <input type="radio" name="option" id="option2" value="option2">
+      <label for="option2"><strong>Option 2:</strong> ZIP Code, Country</label>
+      <div>
+        <label for="zip_code">ZIP Code:</label><br>
+        <input type="text" id="zip_code" name="zip_code" placeholder="e.g. 90001" style="width: 300px;"><br><br>
+        <label for="country_zip">Country:</label><br>
+        <input type="text" id="country_zip" name="country_zip" placeholder="e.g. US" style="width: 300px;">
+      </div>
+    </div>
+
+    <!-- Optional Target Date for Aggregated Data -->
+    <div style="margin-top: 1em;">
+      <label for="target_date"><strong>Target Date (YYYY-MM-DD) (Optional for Aggregated Data):</strong></label><br>
+      <input type="text" id="target_date" name="target_date" placeholder="e.g. 2025-04-09" style="width: 300px;">
+    </div>
+    <br>
+    
+  
+    <!-- Optional language selection -->
+    <div style="margin-top: 1em;">
+      <label for="lang"><strong>Preferred Language:</strong></label><br>
+      <select name="lang" id="lang" style="width: 300px;">
+        <!-- A few examples, but you can list as many languages as you like -->
+        <option value="en" selected>English (en)</option>
+        <option value="zh_cn">Chinese Simplified (zh_cn)</option>
+        <option value="es">Spanish (es)</option>
+        <option value="fr">French (fr)</option>
+        <option value="de">German (de)</option>
+        <option value="ja">Japanese (ja)</option>
+      </select>
+    </div>
+    <br>
+    <button type="submit">Search</button>
+  </form>
+  <!-- Error Message -->
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  <!-- Display Results -->
+  {% if results %}
+    <div class="results">
+      <h2>Search Results (Top 5 Most Relevant)</h2>
+      {% for result in results %}
+      <div class="result">
+        <h3>
+          {{ result.name if result.name else "Unnamed Location" }}
+          {% if result.state %}, {{ result.state }}{% endif %}, {{ result.country }}
+        </h3>
+        <p>
+          <strong>Coordinates:</strong> Latitude: {{ result.lat }}, Longitude: {{ result.lon }}
+        </p>
+
+        {% if result.weather.current %}
+          <!-- Regular Forecast Display: Current Weather + 5-Day Forecast -->
+          <div class="weather">
+            <h4>Current Weather</h4>
+            <ul>
+              <li><strong>Time:</strong> {{ result.weather.current.dt | datetimeformat }}</li>
+              <li><strong>Temperature:</strong> {{ result.weather.current.temp }}°F</li>
+              <li><strong>Humidity:</strong> {{ result.weather.current.humidity }}%</li>
+              <li><strong>Wind Speed:</strong> {{ result.weather.current.wind_speed }} miles/hour</li>
+              <li><strong>UV Index:</strong> {{ result.weather.current.uvi }}</li>
+              <li>
+                <strong>Precipitation:</strong>
+                {% if result.weather.current.rain %}
+                  {{ result.weather.current.rain['1h'] }} mm
+                {% else %}
+                  N/A
+                {% endif %}
+              </li>
+              <li><strong>Summary:</strong> {{ result.weather.current.weather[0].description | capitalize }}</li>
+              <!-- Insert today's overview if available -->
+              {% if result.overview and result.overview.today and result.overview.today.weather_overview %}
+                <li>
+                  <strong>Overview (Today):</strong><br>
+                  {{ result.overview.today.weather_overview }}
+                </li>
+              {% endif %}
+            </ul>
+            <img src="http://openweathermap.org/img/w/{{ result.weather.current.weather[0].icon }}.png" alt="Weather Icon">
+          </div>
+
+          <div class="weather">
+            <h4>5-Day Forecast</h4>
+            <ul>
+              {% for day in result.weather.daily[:5] %}
+              <li>
+                <strong>Date:</strong> {{ day.dt | datetimeformat }}<br>
+                <strong>Day Temp:</strong> {{ day.temp.day }}°F, 
+                <strong>Night Temp:</strong> {{ day.temp.night }}°F,
+                <strong>Max Temp:</strong> {{ day.temp.max }}°F,
+                <strong>Min Temp:</strong> {{ day.temp.min }}°F<br>
+                <strong>Humidity:</strong> {{ day.humidity }}%<br>
+                <strong>Wind Speed:</strong> {{ day.wind_speed }} miles/hour<br>
+                <strong>Ultraviolet Index:</strong> {{ day.uvi }}<br>
+                <strong>Cloud Cover:</strong> {{ day.clouds }}<br>
+                <strong>Precipitation:</strong>
+                {% if day.rain %}
+                  {{ day.rain }} mm
+                {% else %}
+                  N/A
+                {% endif %}<br>
+                <strong>Alerts:</strong> {{ day.alerts }}<br>
+              
+                <strong>Summary:</strong> {{ day.summary }}<br>
+                <strong>Description:</strong> {{ day.weather[0].description }}<br>
+                <!-- If this is day index=1, we treat it as "tomorrow" in the forecast. Insert tomorrow overview. -->
+                {% if loop.index0 == 1 and result.overview and result.overview.tomorrow and result.overview.tomorrow.weather_overview %}
+                <strong>Overview (Tomorrow):</strong>
+                {{ result.overview.tomorrow.weather_overview }}<br>
+              {% endif %}
+                <img src="http://openweathermap.org/img/w/{{ day.weather[0].icon }}.png" alt="Forecast Icon">
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <!-- Aggregated Data Display (Only one day's data) -->
+          <div class="weather">
+            <h4>Aggregated Weather on Target Date</h4>
+            {% set day = result.weather%}
+            <ul>
+              <li>
+              <strong>Date:</strong> {{ day.date }}<br>
+              <strong>Morning Temp:</strong> {{ day.temperature.morning }}°F,
+              <strong>Afternoon Temp:</strong> {{ day.temperature.afternoon }}°F,
+              <strong>Evening Temp:</strong> {{ day.temperature.evening }}°F,
+              <strong>Night Temp:</strong> {{ day.temperature.night }}°F<br>
+              <strong>Cloud Cover:</strong> {{ day.cloud_cover.afternoon }}%<br>
+              <strong>Total Precipitation:</strong> {{ day.precipitation.total }}mm<br>
+              <strong>Humidity:</strong> {{ day.humidity.afternoon }}%<br>
+              <strong>Max Wind Speed:</strong> {{ day.wind.max.speed }}miles/hour<br>
+            </li>
+              
+            </ul>
+           
+          </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</body>
+</html>
