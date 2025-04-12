@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Record Details: {{ record.location }}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f9f9f9;
+    }
+    .nav-links {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Record Details: {{ record.location }}</h1>
+  <p>
+    <strong>Date Range:</strong> {{ record.date_from }} to {{ record.date_to }}<br>
+    <strong>Created At:</strong> {{ record.created_at | est_time }}<br>
+    <strong>Updated At:</strong> {{ record.updated_at | est_time }}
+  </p>
+  
+  <h2>Daily Forecasts</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Morning Temp (°F)</th>
+        <th>Afternoon Temp (°F)</th>
+        <th>Evening Temp (°F)</th>
+        <th>Night Temp (°F)</th>
+        <th>Min Temp (°F)</th>
+        <th>Max Temp (°F)</th>
+        <th>Humidity (%)</th>
+        <th>Wind Speed (mph)</th>
+        <th>Clouds (%)</th>
+        <th>Precipitation (mm)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in details %}
+      <tr>
+        <td>{{ d.obs_date }}</td>
+        <td>{{ d.morning_temp }}</td>
+        <td>{{ d.afternoon_temp }}</td>
+        <td>{{ d.evening_temp }}</td>
+        <td>{{ d.night_temp }}</td>
+        <td>{{ d.min_temp }}</td>
+        <td>{{ d.max_temp }}</td>
+        <td>{{ d.humidity }}</td>
+        <td>{{ d.wind_speed }}</td>
+        <td>{{ d.clouds }}</td>
+        <td>{{ d.precipitation }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="nav-links">
+    <p>
+      <a href="{{ url_for('records') }}">Back to Records</a> | 
+      <a href="{{ url_for('index') }}">Back to Home</a> | 
+      <a href="{{ url_for('edit_record_details', record_id=record.id) }}">Edit Daily Forecasts</a>
+    </p>
+  </div>
+</body>
+</html>

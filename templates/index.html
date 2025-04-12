@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,11 +38,73 @@
     .error {
       color: red;
     }
+    .nav-links {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .nav-links a {
+      text-decoration: none;
+      font-weight: bold;
+      margin: 0 10px;
+      color: #007BFF;
+    }
+    /* Header for Creator name and Info button */
+    header {
+      margin-top: 30px;
+      text-align: center;
+      border-top: 1px solid #ccc;
+      padding-top: 20px;
+    }
+    .info-button {
+      padding: 8px 12px;
+      background-color: #007BFF;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    /* Modal styling */
+    .modal {
+      display: none; 
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%; 
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 600px;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
-  <h1>Weather App </h1>
+  <h1>Weather App</h1>
   <p>Please select an option and enter the necessary details below:</p>
+  
+  <!-- Navigation Links to CRUD pages -->
+  <div class="nav-links">
+    <a href="{{ url_for('create_record') }}">Create New Weather Record</a> |
+    <a href="{{ url_for('records') }}">View Weather Records</a>
+  </div>
 
   <!-- Weather Form -->
   <form method="POST" action="/">
@@ -78,12 +141,10 @@
     </div>
     <br>
     
-  
     <!-- Optional language selection -->
     <div style="margin-top: 1em;">
       <label for="lang"><strong>Preferred Language:</strong></label><br>
       <select name="lang" id="lang" style="width: 300px;">
-        <!-- A few examples, but you can list as many languages as you like -->
         <option value="en" selected>English (en)</option>
         <option value="zh_cn">Chinese Simplified (zh_cn)</option>
         <option value="es">Spanish (es)</option>
@@ -95,6 +156,7 @@
     <br>
     <button type="submit">Search</button>
   </form>
+
   <!-- Error Message -->
   {% if error %}
     <p class="error">{{ error }}</p>
@@ -113,7 +175,6 @@
         <p>
           <strong>Coordinates:</strong> Latitude: {{ result.lat }}, Longitude: {{ result.lon }}
         </p>
-
         {% if result.weather.current %}
           <!-- Regular Forecast Display: Current Weather + 5-Day Forecast -->
           <div class="weather">
@@ -133,7 +194,6 @@
                 {% endif %}
               </li>
               <li><strong>Summary:</strong> {{ result.weather.current.weather[0].description | capitalize }}</li>
-              <!-- Insert today's overview if available -->
               {% if result.overview and result.overview.today and result.overview.today.weather_overview %}
                 <li>
                   <strong>Overview (Today):</strong><br>
@@ -143,7 +203,6 @@
             </ul>
             <img src="http://openweathermap.org/img/w/{{ result.weather.current.weather[0].icon }}.png" alt="Weather Icon">
           </div>
-
           <div class="weather">
             <h4>5-Day Forecast</h4>
             <ul>
@@ -164,15 +223,12 @@
                 {% else %}
                   N/A
                 {% endif %}<br>
-                <strong>Alerts:</strong> {{ day.alerts }}<br>
-              
                 <strong>Summary:</strong> {{ day.summary }}<br>
                 <strong>Description:</strong> {{ day.weather[0].description }}<br>
-                <!-- If this is day index=1, we treat it as "tomorrow" in the forecast. Insert tomorrow overview. -->
                 {% if loop.index0 == 1 and result.overview and result.overview.tomorrow and result.overview.tomorrow.weather_overview %}
-                <strong>Overview (Tomorrow):</strong>
-                {{ result.overview.tomorrow.weather_overview }}<br>
-              {% endif %}
+                  <strong>Overview (Tomorrow):</strong>
+                  {{ result.overview.tomorrow.weather_overview }}<br>
+                {% endif %}
                 <img src="http://openweathermap.org/img/w/{{ day.weather[0].icon }}.png" alt="Forecast Icon">
               </li>
               {% endfor %}
@@ -182,27 +238,62 @@
           <!-- Aggregated Data Display (Only one day's data) -->
           <div class="weather">
             <h4>Aggregated Weather on Target Date</h4>
-            {% set day = result.weather%}
+            {% set day = result.weather %}
             <ul>
               <li>
-              <strong>Date:</strong> {{ day.date }}<br>
-              <strong>Morning Temp:</strong> {{ day.temperature.morning }}°F,
-              <strong>Afternoon Temp:</strong> {{ day.temperature.afternoon }}°F,
-              <strong>Evening Temp:</strong> {{ day.temperature.evening }}°F,
-              <strong>Night Temp:</strong> {{ day.temperature.night }}°F<br>
-              <strong>Cloud Cover:</strong> {{ day.cloud_cover.afternoon }}%<br>
-              <strong>Total Precipitation:</strong> {{ day.precipitation.total }}mm<br>
-              <strong>Humidity:</strong> {{ day.humidity.afternoon }}%<br>
-              <strong>Max Wind Speed:</strong> {{ day.wind.max.speed }}miles/hour<br>
-            </li>
-              
+                <strong>Date:</strong> {{ day.date }}<br>
+                <strong>Morning Temp:</strong> {{ day.temperature.morning }}°F,
+                <strong>Afternoon Temp:</strong> {{ day.temperature.afternoon }}°F,
+                <strong>Evening Temp:</strong> {{ day.temperature.evening }}°F,
+                <strong>Night Temp:</strong> {{ day.temperature.night }}°F<br>
+                <strong>Cloud Cover:</strong> {{ day.cloud_cover.afternoon }}%<br>
+                <strong>Total Precipitation:</strong> {{ day.precipitation.total }}mm<br>
+                <strong>Humidity:</strong> {{ day.humidity.afternoon }}%<br>
+                <strong>Max Wind Speed:</strong> {{ day.wind.max.speed }} miles/hour<br>
+              </li>
             </ul>
-           
           </div>
         {% endif %}
       </div>
       {% endfor %}
     </div>
   {% endif %}
+
+  <!-- Header for Creator Name and Info Button -->
+  <header>
+    <p>Created by Chuancheng Xia</p>
+    <button id="infoButton" class="info-button">Info</button>
+  </header>
+
+  <div id="infoModal" class="modal">
+    <div class="modal-content">
+      <span id="infoClose" class="close">&times;</span>
+      <h2>PM Accelerator</h2>
+      <p>
+        The Product Manager Accelerator Program is designed to support PM professionals through every stage of their careers.
+        From students looking for entry-level jobs to Directors looking to take on a leadership role, our program has helped over hundreds of students fulfill their career aspirations.
+        <a href="https://www.linkedin.com/school/pmaccelerator/" target="_blank">LinkedIn page</a>.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // JavaScript for Modal functionality
+    var modal = document.getElementById("infoModal");
+    var btn = document.getElementById("infoButton");
+    var span = document.getElementById("infoClose");
+
+    btn.onclick = function() {
+      modal.style.display = "block";
+    }
+    span.onclick = function() {
+      modal.style.display = "none";
+    }
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+  </script>
 </body>
 </html>

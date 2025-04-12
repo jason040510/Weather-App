@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Daily Forecasts for {{ record.location }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f9f9f9; }
+    input[type="text"] { width: 100px; padding: 4px; }
+    .nav-links { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Edit Daily Forecasts for {{ record.location }}</h1>
+  <p>
+    <strong>Date Range:</strong> {{ record.date_from }} to {{ record.date_to }}<br>
+    <strong>Record ID:</strong> {{ record.id }}
+  </p>
+  <form method="POST">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Morning Temp (°F)</th>
+          <th>Afternoon Temp (°F)</th>
+          <th>Evening Temp (°F)</th>
+          <th>Night Temp (°F)</th>
+          <th>Min Temp (°F)</th>
+          <th>Max Temp (°F)</th>
+          <th>Humidity (%)</th>
+          <th>Wind Speed (mph)</th>
+          <th>Clouds (%)</th>
+          <th>Precipitation (mm)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for detail in details %}
+        <tr>
+          <td>{{ detail.obs_date }}</td>
+          <td><input type="text" name="forecast_{{ detail.id }}_morning_temp" value="{{ detail.morning_temp }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_afternoon_temp" value="{{ detail.afternoon_temp }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_evening_temp" value="{{ detail.evening_temp }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_night_temp" value="{{ detail.night_temp }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_min_temp" value="{{ detail.min_temp }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_max_temp" value="{{ detail.max_temp }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_humidity" value="{{ detail.humidity }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_wind_speed" value="{{ detail.wind_speed }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_clouds" value="{{ detail.clouds }}"></td>
+          <td><input type="text" name="forecast_{{ detail.id }}_precipitation" value="{{ detail.precipitation }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit">Update Daily Forecasts</button>
+  </form>
+  <div class="nav-links">
+    <p>
+      <a href="{{ url_for('view_record', record_id=record.id) }}">Back to Record Details</a> |
+      <a href="{{ url_for('records') }}">Back to Records</a>
+    </p>
+  </div>
+</body>
+</html>
