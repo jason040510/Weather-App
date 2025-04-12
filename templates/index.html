@@ -94,6 +94,31 @@
       color: black;
       text-decoration: none;
     }
+    /* Styles for Meal Gallery */
+    .meal-gallery {
+      margin-top: 1em;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+    .meal-gallery h4 {
+      margin-top: 0;
+    }
+    .meal-gallery ul {
+      display: flex;
+      flex-wrap: wrap;
+      list-style: none;
+      padding: 0;
+    }
+    .meal-gallery li {
+      margin: 5px;
+      text-align: center;
+    }
+    .meal-gallery img {
+      width: 150px;
+      height: auto;
+      border: 1px solid #ddd;
+      padding: 2px;
+    }
   </style>
 </head>
 <body>
@@ -175,8 +200,8 @@
         <p>
           <strong>Coordinates:</strong> Latitude: {{ result.lat }}, Longitude: {{ result.lon }}
         </p>
-        {% if result.weather.current %}
-          <!-- Regular Forecast Display: Current Weather + 5-Day Forecast -->
+        {% if result.weather and result.weather.current %}
+          <!-- Regular Weather Forecast Display -->
           <div class="weather">
             <h4>Current Weather</h4>
             <ul>
@@ -235,7 +260,7 @@
             </ul>
           </div>
         {% else %}
-          <!-- Aggregated Data Display (Only one day's data) -->
+          <!-- Display aggregated weather if only one day's data is available -->
           <div class="weather">
             <h4>Aggregated Weather on Target Date</h4>
             {% set day = result.weather %}
@@ -254,6 +279,21 @@
             </ul>
           </div>
         {% endif %}
+
+        <!-- Display Meal Thumbnails if available -->
+        {% if result.meals and result.meals|length > 0 %}
+          <div class="meal-gallery">
+            <h4>Meals from {{ result.country }} ({{ country_code_to_meal_area.get(result.country.upper(), result.country) }})</h4>
+            <ul>
+              {% for meal in result.meals %}
+                <li>
+                  <img src="{{ meal.strMealThumb }}" alt="{{ meal.strMeal }}">
+                  <p>{{ meal.strMeal }}</p>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -265,6 +305,7 @@
     <button id="infoButton" class="info-button">Info</button>
   </header>
 
+  <!-- Modal for PM Accelerator Info -->
   <div id="infoModal" class="modal">
     <div class="modal-content">
       <span id="infoClose" class="close">&times;</span>

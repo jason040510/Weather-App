@@ -1,16 +1,45 @@
 import requests, json, sqlite3, pytz, Export_format
-from flask import Flask, render_template, request, redirect, url_for, g, flash
+from flask import Flask, render_template, request, redirect, url_for, g, flash, make_response, jsonify
 from datetime import datetime, timedelta, timezone
 
-
 app = Flask(__name__)
-app.secret_key = '123456789' 
+app.secret_key = '123456789'
 
 API_KEY = '769b38da606e51a58cde555827aeeda1'
 DATABASE = 'weather.db'
 
+# --------------------------------------------------
+# Mapping OpenWeather country codes to MealDB areas.
+# These mappings cover the countries that show flags in your image.
+# For example: "US" maps to "American", "CN" to "Chinese", etc.
+country_code_to_meal_area = {
+    "US": "American",
+    "GB": "British",
+    "CA": "Canadian",
+    "CN": "Chinese",
+    "EG": "Egyptian",
+    "FR": "French",
+    "GR": "Greek",
+    "IN": "Indian",
+    "IE": "Irish",
+    "IT": "Italian",
+    "JM": "Jamaican",
+    "JP": "Japanese",
+    "MX": "Mexican",
+    "MA": "Moroccan",
+    "PL": "Polish",
+    "PT": "Portuguese",
+    "RU": "Russian",
+    "ES": "Spanish",
+    "TH": "Thai",
+    "TN": "Tunisian",
+    "TR": "Turkish",
+    "VN": "Vietnamese"
+}
+# --------------------------------------------------
 
 ### HELPER FUNCTIONS
+
 @app.route('/export_records', methods=['GET','POST'])
 def export_records():
     """Export all weather records (and possibly details) in the chosen format."""
@@ -35,17 +64,14 @@ def est_time_filter(timestamp_str):
     if not timestamp_str:
         return ""
     try:
-        # Parse the DB timestamp (assuming '%Y-%m-%d %H:%M:%S' format in UTC)
         dt_utc = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-        # Mark it as UTC
         dt_utc = dt_utc.replace(tzinfo=timezone.utc)
-        # Convert to US/Eastern
         eastern = pytz.timezone("US/Eastern")
         dt_est = dt_utc.astimezone(eastern)
         return dt_est.strftime('%Y-%m-%d %H:%M:%S %Z')
     except ValueError:
         return timestamp_str
-    
+
 @app.template_filter("loads")
 def loads_filter(s):
     if s:
@@ -83,7 +109,7 @@ def generate_date_list(date_from_str, date_to_str):
 
 def get_daily_aggregated_data(lat, lon, target_date_str, lang_code='en'):
     try:
-        datetime.strptime(target_date_str, "%Y-%m-%d")  
+        datetime.strptime(target_date_str, "%Y-%m-%d")
     except ValueError:
         return None
     url = (
@@ -96,14 +122,13 @@ def get_daily_aggregated_data(lat, lon, target_date_str, lang_code='en'):
         return response.json()
     return None
 
-
 ### DATABASE (CRUD) SETUP
 
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row  # allow column access by name
+        db.row_factory = sqlite3.Row
     return db
 
 def init_db():
@@ -124,7 +149,7 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # Daily weather details table 
+        # Daily weather details table with new temperature fields
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weather_details (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,9 +177,6 @@ def close_connection(exception):
         db.close()
 
 ### ROUTES
-
-### EXISTING WEATHER SEARCH ROUTE ("/")
-### -------------------------
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -200,19 +222,20 @@ def index():
                         for item in geo_data:
                             lat = item.get('lat')
                             lon = item.get('lon')
+                            # Prepare the basic result structure.
+                            result = {
+                                'name': item.get('name'),
+                                'state': item.get('state', ''),
+                                'country': item.get('country', ''),
+                                'lat': lat,
+                                'lon': lon,
+                            }
                             if target_date_input:
                                 agg_data = get_daily_aggregated_data(lat, lon, target_date_input, lang_code)
                                 if not agg_data:
                                     error = "Failed to retrieve aggregated weather data for the target date."
                                     continue
-                                result = {
-                                    'name': item.get('name'),
-                                    'state': item.get('state', ''),
-                                    'country': item.get('country', ''),
-                                    'lat': lat,
-                                    'lon': lon,
-                                    'weather': agg_data
-                                }
+                                result['weather'] = agg_data
                             else:
                                 onecall_url = (
                                     f"https://api.openweathermap.org/data/3.0/onecall?"
@@ -242,15 +265,29 @@ def index():
                                     o_tomorrow_resp = requests.get(overview_tomorrow_url)
                                     if o_tomorrow_resp.status_code == 200:
                                         overview_data['tomorrow'] = o_tomorrow_resp.json()
-                                result = {
-                                    'name': item.get('name'),
-                                    'state': item.get('state', ''),
-                                    'country': item.get('country', ''),
-                                    'lat': lat,
-                                    'lon': lon,
-                                    'weather': weather_data,
-                                    'overview': overview_data
-                                }
+                                result['weather'] = weather_data
+                                result['overview'] = overview_data
+                            
+                            # --- MealDB Integration ---
+                            # Retrieve the country code from the geo API result.
+                            country_code = item.get('country')
+                            if country_code:
+                                country_code = country_code.upper()
+                                meal_area = country_code_to_meal_area.get(country_code)
+                                if meal_area:
+                                    meal_url = f"https://www.themealdb.com/api/json/v1/1/filter.php?a={meal_area}"
+                                    meal_resp = requests.get(meal_url)
+                                    if meal_resp.status_code == 200:
+                                        meal_data = meal_resp.json()
+                                        result['meals'] = meal_data.get('meals', [])
+                                    else:
+                                        result['meals'] = []
+                                else:
+                                    result['meals'] = []
+                            else:
+                                result['meals'] = []
+                            # --- End MealDB Integration ---
+
                             results.append(result)
                 else:
                     error = "Error accessing the geocoding service (Option 1)."
@@ -268,19 +305,19 @@ def index():
                     lat = zip_data.get('lat')
                     lon = zip_data.get('lon')
                     name = zip_data.get('name', '')
+                    result = {
+                        'name': name,
+                        'state': '',
+                        'country': country_code,
+                        'lat': lat,
+                        'lon': lon,
+                    }
                     if target_date_input:
                         agg_data = get_daily_aggregated_data(lat, lon, target_date_input, lang_code)
                         if not agg_data:
                             error = "Failed to retrieve aggregated weather data for the target date."
                         else:
-                            result = {
-                                'name': name,
-                                'state': '',
-                                'country': country_code,
-                                'lat': lat,
-                                'lon': lon,
-                                'weather': agg_data
-                            }
+                            result['weather'] = agg_data
                     else:
                         onecall_url = (
                             f"https://api.openweathermap.org/data/3.0/onecall?"
@@ -310,26 +347,38 @@ def index():
                             o_tomorrow_resp = requests.get(overview_tomorrow_url)
                             if o_tomorrow_resp.status_code == 200:
                                 overview_data['tomorrow'] = o_tomorrow_resp.json()
-                        result = {
-                            'name': name,
-                            'state': '',
-                            'country': country_code,
-                            'lat': lat,
-                            'lon': lon,
-                            'weather': weather_data,
-                            'overview': overview_data
-                        }
+                        result['weather'] = weather_data
+                        result['overview'] = overview_data
+                    
+                    # --- MealDB Integration for Option 2 ---
+                    # Here, use the provided country code (from form) and map it.
+                    if country_code:
+                        country_code = country_code.upper()
+                        meal_area = country_code_to_meal_area.get(country_code)
+                        if meal_area:
+                            meal_url = f"https://www.themealdb.com/api/json/v1/1/filter.php?a={meal_area}"
+                            meal_resp = requests.get(meal_url)
+                            if meal_resp.status_code == 200:
+                                meal_data = meal_resp.json()
+                                result['meals'] = meal_data.get('meals', [])
+                            else:
+                                result['meals'] = []
+                        else:
+                            result['meals'] = []
+                    else:
+                        result['meals'] = []
+                    # --- End MealDB Integration ---
+                    
                     results.append(result)
                 else:
                     error = "No results found for the given ZIP Code or an error occurred."
         else:
             error = "Please choose one of the available options."
     
-    return render_template('index.html', results=results, error=error)
+    return render_template('index.html', results=results, error=error, country_code_to_meal_area=country_code_to_meal_area)
 
 @app.route('/records')
 def records():
-    """List all weather records including a count of daily forecasts."""
     db = get_db()
     query = """
         SELECT wr.*,
@@ -345,7 +394,6 @@ def records():
 
 @app.route('/record/<int:record_id>')
 def view_record(record_id):
-    """Detailed view: display daily forecasts for a given record."""
     db = get_db()
     rec_cur = db.execute("SELECT * FROM weather_records WHERE id = ?", (record_id,))
     record = rec_cur.fetchone()
@@ -479,7 +527,6 @@ def create_record():
 
 @app.route('/record/<int:record_id>/update', methods=['GET', 'POST'])
 def update_record(record_id):
-    """Update the main record (location and date range). This route re-fetches daily data using the API."""
     db = get_db()
     cur = db.execute("SELECT * FROM weather_records WHERE id = ?", (record_id,))
     record = cur.fetchone()
@@ -609,26 +656,18 @@ def update_record(record_id):
 
 @app.route('/record/<int:record_id>/edit_details', methods=['GET', 'POST'])
 def edit_record_details(record_id):
-    """
-    Allow the user to update individual daily weather details stored in the database.
-    The form displays the forecasts in editable fields.
-    """
     db = get_db()
-    # Retrieve the main record (for context)
     rec_cur = db.execute("SELECT * FROM weather_records WHERE id = ?", (record_id,))
     record = rec_cur.fetchone()
     if not record:
         return "Record not found", 404
 
-    # Retrieve the daily details for this record
     details_cur = db.execute("SELECT * FROM weather_details WHERE record_id = ? ORDER BY obs_date", (record_id,))
     details = details_cur.fetchall()
 
     if request.method == 'POST':
-        # For each detail row, update the values from form fields.
         for detail in details:
             detail_id = detail['id']
-            # Expect field names like forecast_{{ detail.id }}_morning_temp, etc.
             morning_temp = request.form.get(f"forecast_{detail_id}_morning_temp")
             afternoon_temp = request.form.get(f"forecast_{detail_id}_afternoon_temp")
             evening_temp = request.form.get(f"forecast_{detail_id}_evening_temp")
@@ -640,7 +679,6 @@ def edit_record_details(record_id):
             clouds = request.form.get(f"forecast_{detail_id}_clouds")
             precipitation = request.form.get(f"forecast_{detail_id}_precipitation")
             
-            # Convert numeric fields where possible; otherwise leave as None.
             def to_float(val):
                 try:
                     return float(val)
