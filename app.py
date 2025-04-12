@@ -1,4 +1,4 @@
-import requests, json, sqlite3, pytz, Export_format
+import requests, json, sqlite3, pytz, Export_format, os
 from flask import Flask, render_template, request, redirect, url_for, g, flash, make_response, jsonify
 from datetime import datetime, timedelta, timezone
 
@@ -8,10 +8,8 @@ app.secret_key = '123456789'
 API_KEY = '769b38da606e51a58cde555827aeeda1'
 DATABASE = 'weather.db'
 
-# --------------------------------------------------
+
 # Mapping OpenWeather country codes to MealDB areas.
-# These mappings cover the countries that show flags in your image.
-# For example: "US" maps to "American", "CN" to "Chinese", etc.
 country_code_to_meal_area = {
     "US": "American",
     "GB": "British",
@@ -286,7 +284,7 @@ def index():
                                     result['meals'] = []
                             else:
                                 result['meals'] = []
-                            # --- End MealDB Integration ---
+                           
 
                             results.append(result)
                 else:
@@ -351,7 +349,7 @@ def index():
                         result['overview'] = overview_data
                     
                     # --- MealDB Integration for Option 2 ---
-                    # Here, use the provided country code (from form) and map it.
+                    # Here, use the provided country code and map it.
                     if country_code:
                         country_code = country_code.upper()
                         meal_area = country_code_to_meal_area.get(country_code)
@@ -367,7 +365,7 @@ def index():
                             result['meals'] = []
                     else:
                         result['meals'] = []
-                    # --- End MealDB Integration ---
+                   
                     
                     results.append(result)
                 else:
@@ -722,4 +720,5 @@ def delete_record(record_id):
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
